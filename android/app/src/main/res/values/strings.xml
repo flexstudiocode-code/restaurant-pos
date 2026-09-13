@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Flex POS</string>
+    <string name="title_activity_main">Flex POS</string>
+    <string name="package_name">com.nellara.pos</string>
+    <string name="custom_url_scheme">com.nellara.pos</string>
+</resources>

@@ -1,0 +1,98 @@
+{
+  "name": "restaurant-pos",
+  "private": true,
+  "version": "1.5.0",
+  "description": "Meadows Park Restaurant — Restaurant billing for Kerala. PWA, Android (Capacitor) and desktop (Electron).",
+  "author": "Meadows Park Restaurant",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build && node scripts/gen-sw.mjs",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "test:gst": "esbuild scripts/gst-test.mjs --bundle --format=esm --platform=node --outfile=node_modules/.cache/gst-test.mjs --log-level=error && node node_modules/.cache/gst-test.mjs",
+    "test:receipt": "esbuild scripts/receipt-test.mjs --bundle --format=esm --platform=node --outfile=node_modules/.cache/receipt-test.mjs --log-level=error && node node_modules/.cache/receipt-test.mjs",
+    "test:sync": "esbuild scripts/sync-test.mjs --bundle --format=esm --platform=node --outfile=node_modules/.cache/sync-test.mjs --log-level=error && node node_modules/.cache/sync-test.mjs",
+    "test:offline": "node scripts/offline-test.mjs",
+    "test:rollover": "esbuild scripts/rollover-test.mjs --bundle --format=esm --platform=node --outfile=node_modules/.cache/rollover-test.mjs --log-level=error && node node_modules/.cache/rollover-test.mjs",
+    "test:pay": "node scripts/pay-test.mjs",
+    "test:zreport": "esbuild scripts/zreport-test.mjs --bundle --format=esm --platform=node --outfile=node_modules/.cache/zreport-test.mjs --log-level=error && node node_modules/.cache/zreport-test.mjs",
+    "pay:server": "node server/index.cjs",
+    "test:serve": "node scripts/serve-dist-test.mjs",
+    "test:desktop-hub": "node scripts/sync-hub-desktop-test.mjs",
+    "desktop:dev": "node scripts/electron-dev.mjs",
+    "desktop:start": "electron .",
+    "desktop:smoke": "node scripts/electron-smoke.mjs",
+    "test:e2e": "npm run build && node scripts/e2e-smoke.mjs",
+    "desktop:build": "npm run build && electron-builder --publish never",
+    "desktop:dir": "npm run build && electron-builder --dir --publish never"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/browser": "^8.0.4",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
+    "qrcode": "^1.5.4",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@types/web-bluetooth": "^0.0.21",
+    "@vitejs/plugin-react": "^6.0.4",
+    "electron": "^43.4.0",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
+    "oxlint": "^1.75.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.2.0"
+  },
+  "build": {
+    "appId": "com.nellara.pos",
+    "productName": "Meadows Park Restaurant",
+    "directories": {
+      "output": "release",
+      "buildResources": "electron"
+    },
+    "files": [
+      "dist/**",
+      "electron/**",
+      "package.json",
+      "!node_modules/**",
+      "node_modules/ws/**"
+    ],
+    "icon": "public/icons/icon-512.png",
+    "asar": true,
+    "disableAsarIntegrity": true,
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "electron/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.business"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Office",
+      "maintainer": "Meadows Park Restaurant"
+    }
+  }
+}
