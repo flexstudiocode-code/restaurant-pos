@@ -5,7 +5,7 @@
 // marker and two-decimal amounts, then totals and a bottom detail block.
 
 import { DEFAULT_BILL_LAYOUT, thermalWidthMm, type KOT, type Order, type State } from './types';
-import { buildBill } from './gst';
+import { buildBill } from './bill';
 import { fmtQty, fmtRec2 } from './money';
 import { fmtDateTime, fmtTime, splitBillName } from './format';
 import { tableLabel } from './selectors';
@@ -34,9 +34,9 @@ export interface ReceiptHeaderStyle {
   /** Lines right after the script lines, rendered as the sans-serif subtitle
    *  (e.g. “RESTAURANT”) — mirrors the on-screen two-line bill header. */
   subLines: number;
-  /** Body-font lines that follow and are centred (address, phone, GSTIN,
-   *  FSSAI, custom header lines and the TAX INVOICE label) — mirroring the
-   *  centred on-screen header block under the restaurant name. */
+/** Body-font lines that follow and are centred (address, phone,
+ *  FSSAI, custom header lines and the INVOICE label) — mirroring the
+ *  centred on-screen header block under the restaurant name. */
   centerLines: number;
 }
 
@@ -56,13 +56,12 @@ export function receiptHeaderStyle(state: State, order: Order): ReceiptHeaderSty
     if (suffix) subLines = 1;
     if (p.address) centerLines++;
     if (p.phone) centerLines++;
-    if (p.gstin) centerLines++;
     if (p.fssai) centerLines++;
   }
   for (const line of layout.headerLines) {
     if (applyBillPlaceholders(line, state, order).trim()) centerLines++;
   }
-  if (layout.showTaxInvoiceLabel) centerLines++;
+  if (layout.showInvoiceLabel) centerLines++;
   return { scriptLines, subLines, centerLines };
 }
 
@@ -123,20 +122,16 @@ function itemRow(name: string, qty: string, marker: string, amnt: string, w: num
 export function buildReceiptText(
   state: State,
   order: Order,
-  opts: { width?: ReceiptWidth; showTaxSummary?: boolean } = {}
+  opts: { width?: ReceiptWidth } = {}
 ): string {
   const w =
     opts.width ??
     receiptWidthFor(thermalWidthMm(state.billing.thermalWidth, state.billing.thermalCustomWidth));
-  const showTax = opts.showTaxSummary ?? true;
   const p = state.profile;
-  // Older orders without the field are treated as GST-enabled.
-  const isGst = order.gstEnabled !== false;
   const bill = buildBill({
     lines: order.lines,
     discount: order.discount,
     billing: state.billing,
-    gstEnabled: isGst,
     deliveryCharge: order.deliveryCharge,
   });
   const paid = order.payments.reduce((s, x) => s + x.amount, 0);
@@ -150,8 +145,8 @@ export function buildReceiptText(
 
   // Header — same two-line restaurant name as the printed bill: the title
   // (e.g. MEADOWS PARK) on its own line, the trailing word (e.g. RESTAURANT)
-  // centred below it, then the centred detail block (address, GSTIN, custom
-  // header lines, TAX INVOICE). Hidden entirely if the user turned it off in
+  // centred below it, then the centred detail block (address, custom
+  // header lines, INVOICE). Hidden entirely if the user turned it off in
   // Bill design. The name lines are never truncated — the thermal raster
   // re-fits them to the paper by font size.
   if (layout.showRestaurantName) {
@@ -160,7 +155,6 @@ export function buildReceiptText(
     if (nameSuffix) out.push(centerNoTrunc(nameSuffix.toUpperCase(), w));
     if (p.address) out.push(center(p.address, w));
     if (p.phone) out.push(center(`Ph: ${p.phone}`, w));
-    if (p.gstin) out.push(center(`GSTIN: ${p.gstin}`, w));
     if (p.fssai) out.push(center(`FSSAI Lic No: ${p.fssai}`, w));
   }
   // User-written header lines, e.g. 'Open 7:00 AM - 11:00 PM' or '{name}'.
@@ -168,7 +162,7 @@ export function buildReceiptText(
     const text = applyBillPlaceholders(line, state, order).trim();
     if (text) out.push(center(text, w));
   }
-  if (layout.showTaxInvoiceLabel) out.push(center(isGst ? 'TAX INVOICE' : 'INVOICE', w));
+  if (layout.showInvoiceLabel) out.push(center('INVOICE', w));
   out.push(sep(w));
 
   // Top row — same line as the reference bill.
@@ -188,9 +182,7 @@ export function buildReceiptText(
   out.push(sep(w));
 
   // Totals — two-decimal amounts, right-aligned, like the reference.
-  // Subtotal is the pre-tax taxable value so the bill visibly adds up
-  // (Subtotal + Service Charge + CGST + SGST + Round Off = TOTAL).
-  out.push(row('Subtotal', fmtRec2(bill.foodTaxable), w));
+  out.push(row('Subtotal', fmtRec2(bill.foodGross), w));
   if (bill.discount > 0) out.push(row('Discount', '-' + fmtRec2(bill.discount), w));
   if (bill.deliveryCharge > 0) {
     out.push(row('Delivery Charge', `+ ${fmtRec2(bill.deliveryCharge)}`, w));
@@ -200,10 +192,6 @@ export function buildReceiptText(
     // sizes — a raw string would overflow the paper and force the whole
     // receipt to shrink (the font-size setting silently stops working).
     out.push(row(`Service Charge @${scPct.toFixed(2)} :`, `+ ${fmtRec2(bill.serviceCharge)}`, w));
-  }
-  if (bill.taxTotal > 0) {
-    out.push(row('CGST', fmtRec2(bill.cgstTotal), w));
-    out.push(row('SGST', fmtRec2(bill.sgstTotal), w));
   }
   if (bill.roundOff !== 0) out.push(row('Round Off', fmtRec2(bill.roundOff), w));
   out.push(row('TOTAL', fmtRec2(bill.payable), w));
@@ -238,15 +226,6 @@ export function buildReceiptText(
         }
         if (line) out.push(row('Address', line, w));
       }
-    }
-  }
-
-  // Tax summary (kept to two lines so it fits the narrowest receipt)
-  if (showTax && layout.showTaxSummary && bill.slabs.length > 0) {
-    out.push(sep(w));
-    for (const s of bill.slabs) {
-      out.push(center(`GST ${s.rate}% on ${fmtRec2(s.taxable)}`, w));
-      out.push(row('', `CGST ${fmtRec2(s.cgst)} + SGST ${fmtRec2(s.sgst)}`, w));
     }
   }
 

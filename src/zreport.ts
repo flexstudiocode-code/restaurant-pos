@@ -4,7 +4,7 @@
 // Pure functions only — unit-tested in scripts/zreport-test.mjs.
 
 import type { State } from './types';
-import { buildBill } from './gst';
+import { buildBill } from './bill';
 import { fmtRec2 } from './money';
 import { fmtDate, fmtTime } from './format';
 import { businessDayKey, rolloverMinutes } from './rollover';
@@ -18,9 +18,6 @@ export interface ZReport {
   discounts: number;
   deliveryCharges: number;
   serviceCharges: number;
-  taxTotal: number;
-  cgst: number;
-  sgst: number;
   roundOff: number;
   /** Cash actually collected (cash payment allocations on paid bills). */
   cash: number;
@@ -41,7 +38,7 @@ function emptyZ(day: string): ZReport {
   return {
     day,
     bills: 0, gross: 0, food: 0, discounts: 0, deliveryCharges: 0,
-    serviceCharges: 0, taxTotal: 0, cgst: 0, sgst: 0, roundOff: 0,
+    serviceCharges: 0, roundOff: 0,
     cash: 0, upi: 0, card: 0, other: 0,
     voidCount: 0, voidTotal: 0,
     cashInDrawer: 0, expenses: 0,
@@ -80,7 +77,6 @@ export function buildZReport(state: State, ref: Date, openingFloatPaise = 0): ZR
       lines: o.lines,
       discount: o.discount,
       billing: state.billing,
-      gstEnabled: o.gstEnabled,
       deliveryCharge: o.deliveryCharge,
     });
     z.bills += 1;
@@ -89,9 +85,6 @@ export function buildZReport(state: State, ref: Date, openingFloatPaise = 0): ZR
     z.discounts += bill.discount;
     z.deliveryCharges += bill.deliveryCharge;
     z.serviceCharges += bill.serviceCharge;
-    z.taxTotal += bill.taxTotal;
-    z.cgst += bill.cgstTotal;
-    z.sgst += bill.sgstTotal;
     z.roundOff += bill.roundOff;
 
     // Attribute each payment against the payable (over-tender is change,
@@ -126,7 +119,6 @@ export function buildZReport(state: State, ref: Date, openingFloatPaise = 0): ZR
       lines: o.lines,
       discount: o.discount,
       billing: state.billing,
-      gstEnabled: o.gstEnabled,
       deliveryCharge: o.deliveryCharge,
     }).payable;
     z.voidCount += 1;
@@ -188,10 +180,6 @@ export function buildZReportText(state: State, z: ZReport, w = 48): string {
   out.push(row('Discounts', '-' + fmtRec2(z.discounts), w));
   if (z.deliveryCharges > 0) out.push(row('Delivery charges', '+' + fmtRec2(z.deliveryCharges), w));
   if (z.serviceCharges > 0) out.push(row('Service charge', '+' + fmtRec2(z.serviceCharges), w));
-  if (z.taxTotal > 0) {
-    out.push(row('CGST', fmtRec2(z.cgst), w));
-    out.push(row('SGST', fmtRec2(z.sgst), w));
-  }
   if (z.roundOff !== 0) out.push(row('Round off', fmtRec2(z.roundOff), w));
   out.push('');
   out.push(center('— CASH —', w));

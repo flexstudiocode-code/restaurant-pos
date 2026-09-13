@@ -30,7 +30,7 @@ import type {
 import { DEFAULT_BILL_LAYOUT, uid } from './types';
 import { dbGet, dbSet } from './db';
 import { seedState, seedItems, seedCategories, MENU_VERSION } from './seed';
-import { buildBill } from './gst';
+import { buildBill } from './bill';
 import { todayKey, invoiceLabel } from './format';
 import { clamp } from './money';
 import { mergeKots, mergeOrders, renumberCollisions } from './syncMerge';
@@ -126,7 +126,6 @@ interface StoreValue {
   sendToKitchen: (orderId: string) => void;
   setDiscount: (orderId: string, paise: number) => void;
   setDeliveryCharge: (orderId: string, paise: number) => void;
-  setGstEnabled: (orderId: string, enabled: boolean) => void;
   setCustomerInfo: (orderId: string, info: { name?: string; phone?: string; address?: string }) => void;
   setOrderNote: (orderId: string, note: string) => void;
   splitOrder: (orderId: string, lineIds: string[]) => Order | null;
@@ -218,14 +217,6 @@ function normalizeState(s: State): State {
     },
     billing: {
       ...st.billing,
-      // v1.2.7: GST is now charged ON TOP of menu prices (exclusive) so the
-      // bill total actually includes CGST + SGST. One-time migration for
-      // existing installs; the flag keeps a later manual choice (Settings →
-      // Billing & GST) intact.
-      pricingMode: st.billing.pricingMigrated ? st.billing.pricingMode : 'exclusive',
-      pricingMigrated: true,
-      // 80mm is the standard POS paper; older states stored the previous
-      // 58mm default (or nothing) — move everyone to 80mm.
       thermalWidth: st.billing.thermalWidth === '58' ? '80' : (st.billing.thermalWidth ?? '80'),
       thermalCustomWidth: (st.billing as { thermalCustomWidth?: number }).thermalCustomWidth ?? 80,
       rolloverTime: st.billing.rolloverTime ?? '00:00',
@@ -261,9 +252,7 @@ function normalizeState(s: State): State {
       : seedItems(),
     orders: (Array.isArray(st.orders) ? st.orders : []).map((o) => ({
       ...o,
-      // v1.5.2: flat delivery charge per order (paise). Older orders treat unknown as 0.
       deliveryCharge: (o as { deliveryCharge?: number }).deliveryCharge ?? 0,
-      gstEnabled: (o as { gstEnabled?: boolean }).gstEnabled ?? true,
       customerPhone: (o as { customerPhone?: string }).customerPhone ?? '',
       customerAddress: (o as { customerAddress?: string }).customerAddress ?? '',
       orderNote: (o as { orderNote?: string }).orderNote ?? '',
@@ -484,7 +473,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         id: uid(),
         invoiceNo: '',
         kotNos: [],
-        gstEnabled: true,
         type,
         tableIndex,
         customerName: '',
@@ -566,8 +554,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               name: lineName,
               unitPrice,
               qty,
-              gstRate: item.gstRate,
-              hsn: item.hsn,
               veg: item.veg,
               note: '',
               kotPrinted: false,
@@ -731,15 +717,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }));
   }, [apply]);
 
-  const setGstEnabled = useCallback((orderId: string, enabled: boolean) => {
-    apply((prev) => ({
-      ...prev,
-      orders: prev.orders.map((o) =>
-        o.id === orderId ? { ...o, gstEnabled: enabled, updatedAt: Date.now() } : o
-      ),
-    }));
-  }, [apply]);
-
   const setCustomerInfo = useCallback(
     (orderId: string, info: { name?: string; phone?: string; address?: string }) => {
       apply((prev) => ({
@@ -864,7 +841,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         lines: order.lines,
         discount: order.discount,
         billing: s.billing,
-        gstEnabled: order.gstEnabled,
         deliveryCharge: order.deliveryCharge,
       });
       const paid = payments.reduce((sum, p) => sum + p.amount, 0);
@@ -1174,7 +1150,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const sales = todayBills.reduce(
       (sum, o) =>
         sum +
-        buildBill({ lines: o.lines, discount: o.discount, billing: s.billing, gstEnabled: o.gstEnabled })
+        buildBill({ lines: o.lines, discount: o.discount, billing: s.billing })
           .payable,
       0
     );
@@ -1240,11 +1216,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
    *  collisions, adjust stock for paid/void transitions not seen here before. */
   const syncApplyOrders = useCallback((incoming: Order[]): { corrections: SyncCorrection[]; counter: number } => {
     const prev = stateRef.current;
-    const merged = mergeOrders(prev.orders, incoming).map((o) => ({
-      ...o,
-      // Orders arriving from an older device version may lack the GST flag.
-      gstEnabled: (o as { gstEnabled?: boolean }).gstEnabled ?? true,
-    }));
+    const merged = mergeOrders(prev.orders, incoming);
     const { orders, counter } = renumberCollisions(merged, prev.invoiceCounter, prev.profile.invoicePrefix);
     const incomingById = new Map(incoming.map((o) => [o.id, o]));
     const corrections = orders
@@ -1326,7 +1298,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       sendToKitchen,
       setDiscount,
       setDeliveryCharge,
-      setGstEnabled,
       setCustomerInfo,
       setOrderNote,
       splitOrder,
@@ -1367,7 +1338,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [
       loaded, state, user, screen, tab, toasts, notify, login, logout, newOrder,
       addItem, changeQty, setLineNote, removeLine, sendToKitchen, setDiscount,
-      setDeliveryCharge, setGstEnabled, setCustomerInfo, setOrderNote, splitOrder, repeatOrder, payOrder, voidOrder,
+      setDeliveryCharge, setCustomerInfo, setOrderNote, splitOrder, repeatOrder, payOrder, voidOrder,
       markKot, saveCategory, deleteCategory,
       saveItem, deleteItem, toggleItemAvailable, updateProfile, updateBilling,
       updateGateway, updateAuth, updateTableNames, addExpense, deleteExpense, importState,

@@ -16,7 +16,6 @@ export function applyBillPlaceholders(text: string, state: State, order: Order):
     name: p.name,
     address: p.address,
     phone: p.phone,
-    gstin: p.gstin,
     fssai: p.fssai,
     invoice: order.invoiceNo || '',
     date: fmtDate(at),
