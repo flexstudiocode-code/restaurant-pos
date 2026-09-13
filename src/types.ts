@@ -6,7 +6,6 @@ export type Role = 'admin' | 'waiter' | 'kitchen';
 export type OrderType = 'dine-in' | 'takeaway' | 'delivery';
 export type OrderStatus = 'open' | 'paid' | 'void';
 export type PaymentMethod = 'cash' | 'upi' | 'card';
-export type PricingMode = 'inclusive' | 'exclusive';
 
 /** Optional online payments via Razorpay Checkout (card / UPI / netbanking).
  *  Only the PUBLIC Key ID lives in the app; the secret key stays on the
@@ -24,7 +23,6 @@ export interface RestaurantProfile {
   name: string;
   address: string;
   phone: string;
-  gstin: string;
   fssai: string;
   invoicePrefix: string;
   upiId: string;
@@ -35,13 +33,8 @@ export interface RestaurantProfile {
 }
 
 export interface BillingSettings {
-  pricingMode: PricingMode; // do menu prices include GST? (default exclusive — GST added on top)
-  /** One-time migration flag (v1.2.7): true once pricingMode has been set to
-   *  'exclusive'. Keeps later manual choices made in Settings intact. */
-  pricingMigrated?: boolean;
   serviceChargePct: number; // 0 = disabled
   roundOff: boolean; // round grand total to nearest rupee
-  defaultGstRate: number; // % used for new items
   kotEnabled: boolean;
   kotCounter: number; // daily KOT counter (resets each day)
   thermalWidth: '58' | '80' | 'custom'; // thermal printer paper width setting
@@ -61,11 +54,10 @@ export interface BillLayout {
   /** Custom centred footer lines. Empty = fall back to profile.footerNote. */
   footerLines: string[];
   showRestaurantName: boolean; // script + sans-serif restaurant name block
-  showTaxInvoiceLabel: boolean; // the 'TAX INVOICE' line
+  showInvoiceLabel: boolean; // the 'INVOICE' line
   showColumnHeaders: boolean; // Dish | Qty | Amnt header row
   showMarkers: boolean; // veg (*) / non-veg (#) markers on item rows
   showInvoiceDetails: boolean; // invoice no / date / type / customer block
-  showTaxSummary: boolean; // per-slab GST summary lines
   showPayments: boolean; // payments + change
   showFooter: boolean; // footer lines + thank-you
   /** Printed text scale — bigger for easier reading on the paper roll. */
@@ -85,11 +77,10 @@ export const DEFAULT_BILL_LAYOUT: BillLayout = {
   headerLines: [],
   footerLines: [],
   showRestaurantName: true,
-  showTaxInvoiceLabel: true,
+  showInvoiceLabel: true,
   showColumnHeaders: true,
   showMarkers: true,
   showInvoiceDetails: true,
-  showTaxSummary: true,
   showPayments: true,
   showFooter: true,
   printSize: 'medium',
@@ -160,9 +151,7 @@ export interface MenuItem {
   id: string;
   categoryId: string;
   name: string;
-  price: number; // paise, per unit (exclusive or inclusive per billing mode)
-  gstRate: number; // 0 | 5 | 12 | 18 | 28
-  hsn: string;
+  price: number; // paise, per unit
   veg: boolean; // true = veg, false = non-veg
   available: boolean;
   stock: number | null; // null = unlimited
@@ -177,8 +166,6 @@ export interface OrderLine {
   name: string; // snapshot of item name at order time
   unitPrice: number; // paise (snapshot)
   qty: number; // integer > 0
-  gstRate: number; // snapshot
-  hsn: string; // snapshot
   veg: boolean; // snapshot
   note: string; // item note (e.g. "less spicy")
   kotPrinted: boolean; // has this line already been sent to the kitchen
@@ -200,7 +187,6 @@ export interface Order {
   id: string;
   invoiceNo: string; // e.g. INV-000123 (assigned at payment time; '' while open)
   kotNos: string[]; // KOT numbers generated for this order
-  gstEnabled: boolean; // charge/issue GST on this bill (toggle at checkout)
   type: OrderType;
   tableIndex: number | null; // index into settings.tableNames (dine-in only)
   customerName: string; // optional, for delivery/takeaway
@@ -271,9 +257,6 @@ export type Screen =
   | { name: 'receipt'; orderId: string }
   | { name: 'menuEdit'; itemId: string | null }
   | { name: 'billDesign' };
-
-export const GST_RATES = [0, 5, 12, 18, 28] as const;
-export const DEFAULT_HSN = '9963'; // restaurant services / food served
 
 export function uid(): string {
   return (

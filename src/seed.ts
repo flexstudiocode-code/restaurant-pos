@@ -1,9 +1,7 @@
 // Default seed data: the Meadows Park Restaurant menu (Chemperi).
-// Prices are in paise and represent menu prices (inclusive of GST by default).
+// Prices are in paise and represent menu prices.
 
 import { DEFAULT_BILL_LAYOUT, type Category, type MenuItem, type State } from './types';
-
-const HSN = '9963';
 
 /**
  * Bump this whenever the bundled seed menu below changes. Saved states whose
@@ -16,7 +14,6 @@ export const MENU_VERSION = 3;
 interface SeedItem {
   n: string;
   p: number; // paise
-  r?: number; // gst rate, default 5
   v?: boolean; // veg, default true
   s?: number; // stock, default unlimited
   c: number; // category index
@@ -297,8 +294,6 @@ export function seedItems(): MenuItem[] {
     categoryId: catOf(it.c),
     name: it.n,
     price: it.p,
-    gstRate: it.r ?? 5,
-    hsn: HSN,
     veg: it.v ?? true,
     available: true,
     stock: it.s ?? null,
@@ -338,7 +333,6 @@ export function seedState(): State {
       name: 'Meadows Park Restaurant',
       address: 'Chemperi',
       phone: '+91 98470 12345',
-      gstin: '32ABCDE1234F1Z5',
       fssai: '11523999000123',
       invoicePrefix: 'INV-',
       upiId: '',
@@ -348,10 +342,8 @@ export function seedState(): State {
       logo: '',
     },
     billing: {
-      pricingMode: 'exclusive',
       serviceChargePct: 0,
       roundOff: true,
-      defaultGstRate: 5,
       kotEnabled: true,
       kotCounter: 0,
       thermalWidth: '80',
