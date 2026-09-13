@@ -16,7 +16,7 @@ npm install
 npm run dev        # development server → http://localhost:5173
 npm run build      # production build → dist/
 npm run preview    # serve the production build
-npm run test:gst   # run the billing/GST math test suite
+npm run test:receipt   # run the billing math + receipt test suite
 npm run test:e2e   # build, then drive the real app end-to-end (see “Tests”)
 ```
 
@@ -27,7 +27,7 @@ app and works offline.
 ## Desktop app (Windows / macOS / Linux)
 
 The same app ships as a native desktop application (Electron). Every feature works:
-tables & ordering, KOT, GST billing, thermal printing, WhatsApp share, reports,
+tables & ordering, KOT, billing, thermal printing, WhatsApp share, reports,
 backups — and the desktop build adds two things the browser PWA cannot do:
 
 - **LAN sync hub on the admin's PC** — the desktop app can be the collector hub
@@ -111,30 +111,20 @@ orders), **Kitchen** (`1111`, kitchen display only). In **Settings → Staff use
   - **Order aging** — pending tickets highlight as they get older: amber after
     5 minutes, then red with a gentle pulse after 10, with a live “7m” elapsed
     time on the card, so nothing sits unnoticed in a rush.
-- **GST billing engine** (intra-state Kerala: CGST + SGST):
-  - Slabs 0/5/12/18/28% per item, with HSN codes.
-  - Menu prices can be **inclusive or exclusive** of GST (**exclusive is the
-    default** — GST is added on top of the menu price, so the bill total
-    includes CGST + SGST; the Subtotal shown is the pre-tax value and
-    Subtotal + CGST + SGST (+ round-off) = TOTAL). Existing installs were
-    migrated to exclusive automatically on upgrade.
-  - A per-bill **GST toggle at checkout** (“Charge GST on this bill”): switching
-    it off issues the bill without CGST/SGST (receipt shows plain “INVOICE”, no
-    tax lines or tax summary). With inclusive menu prices the total stays the
-    same — only the tax lines disappear; in exclusive mode GST is removed from
-    the total.
-  - Discounts (flat ₹ or %), optional service charge (GST applied per CBIC
-    guidance), **delivery charge** (a flat fee on delivery orders, entered at
-    checkout — it is not discounted and carries no GST of its own), round-off
+- **Billing** (plain totals, no tax):
+  - Menu prices are what the customer pays: Subtotal − Discount + Delivery +
+    Service charge (+ round-off) = TOTAL.
+  - Discounts (flat ₹ or %), optional service charge, **delivery charge** (a flat
+    fee on delivery orders, entered at checkout — it is not discounted), round-off
     to the nearest rupee (0.50 rounds up). The delivery charge appears on the
     bill, the printed/thermal/WhatsApp receipt, the order detail, the reports
     (a “Delivery charges collected” total) and the CSV export.
   - All money is integer paise — no floating-point rounding bugs. Covered by
-    `npm run test:gst`.
+    `npm run test:receipt`.
 - **Payments** — cash (with tender & change), UPI (with scannable QR for any UPI
   app), card, and split payments across methods.
-- **Tax invoices** — printable GST invoice with restaurant name/address, GSTIN,
-  FSSAI licence no., invoice number (daily sequence), itemised tax summary and
+- **Invoices** — printable invoice with restaurant name/address,
+  FSSAI licence no., invoice number (daily sequence) and
   payment details. Receipts can be reprinted from order history. The bill
   header styles the restaurant name as a signature: the main part (e.g.
   “MEADOWS PARK”) prints in Brush Script MT with the trailing word (e.g.
@@ -166,10 +156,10 @@ orders), **Kitchen** (`1111`, kitchen display only). In **Settings → Staff use
   - **Bill design editor** — Settings → Bill design lets you change the bill
     yourself with a live preview: custom header lines (e.g. your hours line
     `Open 7:00 AM - 11:00 PM`) and footer lines with `{placeholders}`
-    (`{name} {address} {phone} {gstin} {fssai} {invoice} {date} {time}
+    (`{name} {address} {phone} {fssai} {invoice} {date} {time}
     {cashier} {covers} {table} {type}`), show/hide toggles for each section
-    (restaurant header, TAX INVOICE label, Dish/Qty/Amnt columns, veg/non-veg
-    markers, invoice details, GST summary, payments, footer), plus **font size
+    (restaurant header, INVOICE label, Dish/Qty/Amnt columns, veg/non-veg
+    markers, invoice details, payments, footer), plus **font size
     (80–150% slider)** and **font thickness (Regular / Bold / Extra bold)**
     controls for the whole bill. Applies everywhere — screen, Print,
     thermal/USB and WhatsApp. On the paper roll a bigger font re-wraps the
@@ -206,13 +196,13 @@ orders), **Kitchen** (`1111`, kitchen display only). In **Settings → Staff use
 - **Expense & profit tracking** — a dedicated **Expenses** tab (admin) records
   expenses (amount, category, note, date); Reports then show
   **profit = net sales − expenses** for any date range, an expenses-by-category
-  breakdown, and expenses + profit are included in the CSV export.- **Reports** — net sales, bills, average bill, payment-method mix, CGST/SGST
-  collected, delivery charges, category-wise sales, top items, profit, for
+  breakdown, and expenses + profit are included in the CSV export.- **Reports** — net sales, bills, average bill, payment-method mix,
+  delivery charges, category-wise sales, top items, profit, for
 today/yesterday/7 days/month or a custom range, with **CSV export**.
 - **End-of-day Z-report** — one tap (Reports → 🧾 End-of-day Z-report) opens a
   printable day-close summary for the business day (respecting the End-of-day
   rollover time): bills, gross sales, sales by payment method, discounts,
-  delivery &amp; service charges, CGST/SGST, round-off, **cash to be handed over**
+  delivery &amp; service charges, round-off, **cash to be handed over**
   (“CASH IN DRAWER” = opening cash + cash collected − cash expenses), the day's
   voids with reasons, and the list of bills. It prints through the same paths
   as a receipt: the system **Print** dialog, **Bluetooth thermal**, and
@@ -391,8 +381,7 @@ that print a line per check and exit non-zero on failure:
 
 | Command | What it covers |
 | --- | --- |
-| `npm run test:gst` | Bill math: slabs, inclusive/exclusive pricing, discounts, delivery charge, round-off |
-| `npm run test:receipt` | Printed / thermal / WhatsApp receipt text layout and wrapping |
+| `npm run test:receipt` | Bill math (plain totals), receipt text layout and wrapping |
 | `npm run test:zreport` | End-of-day Z-report aggregation, rollover day boundary, text width |
 | `npm run test:sync` | LAN sync merge and conflict rules |
 | `npm run test:rollover` | Business-day boundaries and daily counter resets |
@@ -420,12 +409,10 @@ biryani items; “Fish Biryani” is marked Seasonal (priced at ₹200 by defaul
 editable in the Menu tab). When a menu update ships with a new version of the
 app, existing installs have their categories/items replaced automatically on
 first launch (kept data and history are untouched — bills snapshot item names
-and prices). Set your restaurant details (GSTIN, FSSAI, UPI ID…) in Settings.
+and prices). Set your restaurant details (FSSAI, UPI ID…) in Settings.
 
 ## Notes
 
-- GST treatment here is intra-state (CGST + SGST). For inter-state sales, CGST/SGST
-  would become IGST — not handled by design.
 - UPI QR generation uses your UPI ID from Settings; it opens the customer's UPI
   app with the amount pre-filled and pays straight to the restaurant's UPI
   account (no gateway, no fees). Online card/UPI collection via Razorpay is

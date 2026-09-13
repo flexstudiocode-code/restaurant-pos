@@ -1,7 +1,7 @@
 {
   "name": "Meadows Park Restaurant",
   "short_name": "Meadows Park",
-  "description": "Meadows Park Restaurant — POS & GST billing",
+  "description": "Meadows Park Restaurant — POS & billing",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
