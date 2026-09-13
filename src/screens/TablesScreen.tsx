@@ -4,7 +4,7 @@ import { isDesktop } from '../desktop';
 import { isEditableTarget } from '../shortcuts';
 import { tableLabel } from '../selectors';
 import type { Order } from '../types';
-import { buildBill } from '../gst';
+import { buildBill } from '../bill';
 import { fmt } from '../money';
 import { todayKey } from '../format';
 import { Sheet } from '../components/ui';
@@ -42,7 +42,6 @@ export function TablesScreen() {
         lines: o.lines,
         discount: o.discount,
         billing: state.billing,
-        gstEnabled: o.gstEnabled,
         deliveryCharge: o.deliveryCharge,
       });
       sales += bill.payable;
@@ -176,7 +175,6 @@ export function TablesScreen() {
                 lines: o.lines,
                 discount: o.discount,
                 billing: state.billing,
-                gstEnabled: o.gstEnabled,
                 deliveryCharge: o.deliveryCharge,
               });
               amount += bill.payable;
@@ -221,7 +219,6 @@ export function TablesScreen() {
                   lines: o.lines,
                   discount: o.discount,
                   billing: state.billing,
-                  gstEnabled: o.gstEnabled,
                   deliveryCharge: o.deliveryCharge,
                 });
                 return (

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useStore } from '../store';
 import { orderById, tableLabel } from '../selectors';
 import type { Order } from '../types';
-import { buildBill } from '../gst';
+import { buildBill } from '../bill';
 import { fmt, fmtQty } from '../money';
 import { fmtDateTime, todayKey } from '../format';
 import { buildReceiptText, whatsappShareUrl } from '../receipt';
@@ -76,7 +76,6 @@ export function OrdersScreen() {
         lines: o.lines,
         discount: o.discount,
         billing: state.billing,
-        gstEnabled: o.gstEnabled,
         deliveryCharge: o.deliveryCharge,
       });
       return sum + bill.payable;
@@ -164,7 +163,6 @@ function OrderAmount({ order }: { order: Order }) {
     lines: order.lines,
     discount: order.discount,
     billing: state.billing,
-    gstEnabled: order.gstEnabled,
     deliveryCharge: order.deliveryCharge,
   });
   return <div className="bold mono">{fmt(bill.payable)}</div>;
@@ -187,7 +185,6 @@ function OrderDetail({ orderId, onClose, onReprint }: { orderId: string; onClose
     lines: order.lines,
     discount: order.discount,
     billing: state.billing,
-    gstEnabled: order.gstEnabled,
     deliveryCharge: order.deliveryCharge,
   });
   const isAdmin = user?.role === 'admin';
@@ -232,7 +229,7 @@ function OrderDetail({ orderId, onClose, onReprint }: { orderId: string; onClose
       </div>
 
       <div className="sum-row">
-        <span className="k">Subtotal</span><span className="v">{fmt(bill.foodTaxable)}</span>
+        <span className="k">Subtotal</span><span className="v">{fmt(bill.foodGross)}</span>
       </div>
       {bill.discount > 0 && (
         <div className="sum-row"><span className="k">Discount</span><span className="v">−{fmt(bill.discount)}</span></div>
@@ -243,7 +240,6 @@ function OrderDetail({ orderId, onClose, onReprint }: { orderId: string; onClose
       {bill.serviceCharge > 0 && (
         <div className="sum-row"><span className="k">Service charge</span><span className="v">{fmt(bill.serviceCharge)}</span></div>
       )}
-      <div className="sum-row"><span className="k">CGST + SGST</span><span className="v">{fmt(bill.taxTotal)}</span></div>
       {bill.roundOff !== 0 && (
         <div className="sum-row"><span className="k">Round off</span><span className="v">{fmt(bill.roundOff)}</span></div>
       )}

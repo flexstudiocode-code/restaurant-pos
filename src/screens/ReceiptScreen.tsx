@@ -4,7 +4,7 @@ import { isDesktop } from '../desktop';
 import { isEditableTarget } from '../shortcuts';
 import { orderById, tableLabel } from '../selectors';
 import { DEFAULT_BILL_LAYOUT, thermalWidthMm, type BillLayout, type Order } from '../types';
-import { buildBill } from '../gst';
+import { buildBill } from '../bill';
 import { fmtQty, fmtRec2 } from '../money';
 import { fmtDateTime, splitBillName } from '../format';
 import { applyBillPlaceholders, billFontStyle, billWeightNumber } from '../billLayout';
@@ -49,7 +49,6 @@ export function ReceiptScreen({ orderId }: { orderId: string }) {
     lines: order.lines,
     discount: order.discount,
     billing: state.billing,
-    gstEnabled: order.gstEnabled,
     deliveryCharge: order.deliveryCharge,
   });
   const paid = order.payments.reduce((s, p) => s + p.amount, 0);
@@ -67,7 +66,6 @@ export function ReceiptScreen({ orderId }: { orderId: string }) {
   const receiptText = buildReceiptText(state, order, {
     width: rasterWidthFor(mm, billLayout.fontSizePct),
   });
-
   const handleThermal = async () => {
     if (!thermal.connected) {
       const res = await connectThermal();
@@ -95,7 +93,7 @@ export function ReceiptScreen({ orderId }: { orderId: string }) {
 
   const handleWhatsApp = () => {
     const url = whatsappShareUrl(
-      buildReceiptText(state, order, { width: 32, showTaxSummary: true })
+      buildReceiptText(state, order, { width: 32 })
     );
     void openExternal(url);
   };
@@ -201,7 +199,6 @@ export function ReceiptBody({
     lines: order.lines,
     discount: order.discount,
     billing: state.billing,
-    gstEnabled: order.gstEnabled,
     deliveryCharge: order.deliveryCharge,
   });
   const layout = layoutProp ?? state.billing.billLayout ?? DEFAULT_BILL_LAYOUT;
@@ -221,7 +218,6 @@ export function ReceiptBody({
             </div>
             <div className="r-sub">{p.address}</div>
             {p.phone && <div className="r-sub">Ph: {p.phone}</div>}
-            <div className="r-sub">GSTIN: {p.gstin || '—'}</div>
             {p.fssai && <div className="r-sub">FSSAI Lic No: {p.fssai}</div>}
           </>
         )}
@@ -231,8 +227,8 @@ export function ReceiptBody({
             <div className="r-sub" key={i}>{text}</div>
           ) : null;
         })}
-        {layout.showTaxInvoiceLabel && (
-          <div className="r-sub" style={{ marginTop: 4 }}>TAX INVOICE</div>
+        {layout.showInvoiceLabel && (
+          <div className="r-sub" style={{ marginTop: 4 }}>INVOICE</div>
         )}
       </div>
 
@@ -273,7 +269,7 @@ export function ReceiptBody({
 
       <div className="r-line">
         <span className="l">Subtotal</span>
-        <span className="r">{fmtRec2(bill.foodTaxable)}</span>
+        <span className="r">{fmtRec2(bill.foodGross)}</span>
       </div>
       {bill.discount > 0 && (
         <div className="r-line">
@@ -292,21 +288,6 @@ export function ReceiptBody({
           <span className="l">Service Charge @{scPct.toFixed(2)} :</span>
           <span className="r">+ {fmtRec2(bill.serviceCharge)}</span>
         </div>
-      )}
-      {/* CGST/SGST only when there is actual tax — matches the thermal/USB
-          receipt, which hides the rows when the bill is issued without GST
-          (or every line is 0%). */}
-      {bill.taxTotal > 0 && (
-        <>
-          <div className="r-line">
-            <span className="l">CGST</span>
-            <span className="r">{fmtRec2(bill.cgstTotal)}</span>
-          </div>
-          <div className="r-line">
-            <span className="l">SGST</span>
-            <span className="r">{fmtRec2(bill.sgstTotal)}</span>
-          </div>
-        </>
       )}
       {bill.roundOff !== 0 && (
         <div className="r-line">
@@ -358,22 +339,6 @@ export function ReceiptBody({
               <span className="r">{order.customerAddress}</span>
             </div>
           )}
-        </>
-      )}
-
-      {layout.showTaxSummary && bill.slabs.length > 0 && (
-        <>
-          <div className="r-sep" />
-          {bill.slabs.map((s, i) => (
-            <div className="r-line small" key={i}>
-              <span className="l">
-                GST {s.rate}% on {fmtRec2(s.taxable)}
-              </span>
-              <span className="r">
-                CGST {fmtRec2(s.cgst)} + SGST {fmtRec2(s.sgst)}
-              </span>
-            </div>
-          ))}
         </>
       )}
 

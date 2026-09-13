@@ -5,10 +5,10 @@ import { isDesktop } from '../desktop';
 import { isEditableTarget } from '../shortcuts';
 import { orderById, tableLabel } from '../selectors';
 import type { MenuItem, Order, Payment, PaymentMethod } from '../types';
-import { buildBill } from '../gst';
+import { buildBill } from '../bill';
 import { fmt, rupeesToPaise, fmtQty } from '../money';
 import { payWithRazorpay } from '../razorpay';
-import { Modal, Sheet, EmptyState, Prompt, Chips, Switch } from '../components/ui';
+import { Modal, Sheet, EmptyState, Prompt, Chips } from '../components/ui';
 import {
   IconBack,
   IconTrash,
@@ -40,7 +40,6 @@ export function OrderScreen({ orderId }: { orderId: string }) {
     lines: order.lines,
     discount: order.discount,
     billing: state.billing,
-    gstEnabled: order.gstEnabled,
     deliveryCharge: order.deliveryCharge,
   });
 
@@ -412,7 +411,6 @@ function ItemCard({
         <span>{item.name}</span>
       </div>
       <div className="i-price">{fmt(item.price)}</div>
-      <div className="i-meta">{item.gstRate}% GST</div>
       {hasVariants ? (
         <>
           <button
@@ -521,12 +519,11 @@ function Checkout({
   onBack: () => void;
   onDone: () => void;
 }) {
-  const { state, payOrder, setDiscount, setDeliveryCharge, setGstEnabled, splitOrder, notify, setScreen } = useStore();
+  const { state, payOrder, setDiscount, setDeliveryCharge, splitOrder, notify, setScreen } = useStore();
   const bill = buildBill({
     lines: order.lines,
     discount: order.discount,
     billing: state.billing,
-    gstEnabled: order.gstEnabled,
     deliveryCharge: order.deliveryCharge,
   });
   const payable = bill.payable;
@@ -701,24 +698,10 @@ function Checkout({
       </div>
 
       <div className="card" style={{ marginBottom: 12 }}>
-        <div className="section-title" style={{ marginTop: 0 }}>GST</div>
-        <Switch
-          on={order.gstEnabled}
-          onChange={(v) => setGstEnabled(order.id, v)}
-          label="Charge GST on this bill"
-          sub={
-            state.billing.pricingMode === 'inclusive'
-              ? 'Prices already include GST — switching off just removes the CGST + SGST lines from the bill.'
-              : 'Switching off removes GST (CGST + SGST) from this bill\'s total.'
-          }
-        />
-      </div>
-
-      <div className="card" style={{ marginBottom: 12 }}>
         <div className="section-title" style={{ marginTop: 0 }}>Bill summary</div>
         <div className="sum-row">
           <span className="k">Subtotal ({order.lines.length} items)</span>
-          <span className="v">{fmt(bill.foodTaxable)}</span>
+          <span className="v">{fmt(bill.foodGross)}</span>
         </div>
         {bill.discount > 0 && (
           <div className="sum-row">
@@ -736,12 +719,6 @@ function Checkout({
           <div className="sum-row">
             <span className="k">Service charge ({state.billing.serviceChargePct}%)</span>
             <span className="v">{fmt(bill.serviceCharge)}</span>
-          </div>
-        )}
-        {bill.taxTotal > 0 && (
-          <div className="sum-row">
-            <span className="k">CGST + SGST</span>
-            <span className="v">{fmt(bill.cgstTotal + bill.sgstTotal)}</span>
           </div>
         )}
         {bill.roundOff !== 0 && (
@@ -818,7 +795,7 @@ function Checkout({
             </button>
           </div>
           <div className="small muted" style={{ marginTop: 5 }}>
-            Flat fee added to the bill total (not discounted, no GST of its own).
+            Flat fee added to the bill total (not discounted).
           </div>
         </div>
       )}
