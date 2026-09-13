@@ -25,12 +25,12 @@ const state = {
   version: 1,
   profile: {
     name: 'Flex Restaurant', address: 'MG Road, Kochi', phone: '+91 98470 12345',
-    gstin: '32ABCDE1234F1Z5', fssai: '11523999000123', invoicePrefix: 'INV-',
+    fssai: '11523999000123', invoicePrefix: 'INV-',
     upiId: '', upiName: '', footerNote: 'Thank you!', tableNames: ['1', '2'],
   },
   billing: {
-    pricingMode: 'inclusive', serviceChargePct: 0, roundOff: true,
-    defaultGstRate: 5, kotEnabled: true, kotCounter: 0, thermalWidth: '58',
+    serviceChargePct: 0, roundOff: true,
+    kotEnabled: true, kotCounter: 0, thermalWidth: '58',
   },
   auth: { adminPin: '0000', waiterPin: '2222', kitchenPin: '1111' },
   categories: [], items: [],
@@ -42,8 +42,8 @@ const state = {
 const order = {
   id: 'o1', invoiceNo: 'INV-0001', kotNos: ['K001'], type: 'dine-in',
   tableIndex: 0, customerName: '', lines: [
-    { id: 'l1', itemId: 'i1', name: 'Chicken Biryani', unitPrice: 22000, qty: 1, gstRate: 5, hsn: '9963', veg: false, note: '', kotPrinted: true },
-    { id: 'l2', itemId: 'i2', name: 'Tea (Milk)', unitPrice: 2000, qty: 2, gstRate: 5, hsn: '9963', veg: true, note: 'less sugar', kotPrinted: true },
+    { id: 'l1', itemId: 'i1', name: 'Chicken Biryani', unitPrice: 22000, qty: 1, veg: false, note: '', kotPrinted: true },
+    { id: 'l2', itemId: 'i2', name: 'Tea (Milk)', unitPrice: 2000, qty: 2, veg: true, note: 'less sugar', kotPrinted: true },
   ],
   discount: 0, serviceCharge: 0, status: 'paid',
   payments: [{ id: 'p1', method: 'cash', amount: 50000, receivedAt: 0 }],
@@ -66,7 +66,7 @@ check('no line wider than 32 chars', tooWide.length, 0);
   const dcText = buildReceiptText(state, dcOrder, { width: 32 });
   includes('delivery line present', dcText, 'Delivery Charge');
   includes('delivery amount', dcText, '+ 30.00');
-  // Base 260 (incl 5%) + 30 delivery = 290 total
+  // Base 260 + 30 delivery = 290 total
   includes('delivery in TOTAL', dcText, '290.00');
   const totalLine = dcText.split('\n').find((l) => l.startsWith('TOTAL'));
   check('TOTAL line equals 290.00', totalLine?.trim().endsWith('290.00'), true);
@@ -86,7 +86,6 @@ includes('name title line', text, 'FLEX');
 includes('name suffix line', text, 'RESTAURANT');
 check('name is two lines', text.split('\n').filter((l) => l.trim() === 'FLEX').length, 1);
 check('name suffix on own line', text.split('\n').filter((l) => l.trim() === 'RESTAURANT').length, 1);
-includes('gstin', text, 'GSTIN: 32ABCDE1234F1Z5');
 includes('invoice label', text, 'INV-0001');
 includes('table label', text, 'Dine-in · Table 1');
 
@@ -104,10 +103,7 @@ includes('veg marker', text, '2 *');
 includes('item note', text, '(less sugar)');
 includes('item amount', text, '40.00');
 includes('subtotal', text, 'Subtotal');
-includes('cgst', text, 'CGST');
-includes('sgst', text, 'SGST');
 includes('total', text, 'TOTAL');
-includes('tax summary', text, 'GST 5% on 247.62');
 includes('payment', text, 'CASH');
 includes('change', text, 'Change');
 includes('footer', text, 'Thank you!');
@@ -118,11 +114,10 @@ const customLayout = {
   headerLines: ['{name}', 'Open 7:00 AM - 11:00 PM'],
   footerLines: ['Visit again!'],
   showRestaurantName: false,
-  showTaxInvoiceLabel: false,
+  showInvoiceLabel: false,
   showColumnHeaders: false,
   showMarkers: false,
   showInvoiceDetails: false,
-  showTaxSummary: false,
   showPayments: false,
   showFooter: true,
   printSize: 'medium',
@@ -132,12 +127,11 @@ const custom = buildReceiptText(customState, order, { width: 32 });
 includes('custom header line', custom, 'Open 7:00 AM - 11:00 PM');
 includes('custom header {name}', custom, 'Flex Restaurant');
 check('custom hides restaurant block', custom.includes('FSSAI Lic No:'), false);
-check('custom hides TAX INVOICE label', custom.includes('TAX INVOICE'), false);
+check('custom hides INVOICE label', custom.includes('INVOICE'), false);
 check('custom hides column headers', custom.includes('Amnt'), false);
 check('custom hides markers', custom.includes('#'), false);
 check('custom hides invoice details', custom.includes('INV-0001'), false);
 check('custom hides payments', custom.includes('CASH'), false);
-check('custom hides tax summary', custom.includes('GST 5% on'), false);
 includes('custom footer line', custom, 'Visit again!');
 check('custom replaces footer note', custom.includes('Thank you!'), false);
 includes('custom total present', custom, 'TOTAL');
@@ -164,15 +158,9 @@ check('delivery lines fit 32', delText.split('\n').filter((l) => l.length > 32).
 const tko = buildReceiptText({ ...delState, profile: { ...delState.profile } }, { ...delOrder, type: 'takeaway', customerAddress: '' }, { width: 32 });
 includes('takeaway label', tko, 'Takeaway');
 
-// Default order is a tax invoice; a GST-off order is a plain invoice with no tax lines
-includes('gst invoice label', text, 'TAX INVOICE');
-const noGstOrder = { ...order, gstEnabled: false };
-const noGstText = buildReceiptText(state, noGstOrder, { width: 32 });
-includes('no-gst invoice label', noGstText, 'INVOICE');
-check('no-gst omits CGST line', noGstText.includes('CGST'), false);
-check('no-gst omits SGST line', noGstText.includes('SGST'), false);
-check('no-gst omits tax summary', noGstText.includes('GST 5% on'), false);
-includes('no-gst total present', noGstText, 'TOTAL');
+// Every bill is a plain invoice with no tax lines
+includes('invoice label', text, 'INVOICE');
+includes('order total present', text, 'TOTAL');
 
 if (failures > 0) {
   console.log(`\n${failures} FAILURE(S)`);

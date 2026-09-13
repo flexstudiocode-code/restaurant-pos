@@ -27,12 +27,12 @@ const state = (over = {}) => ({
   version: 1,
   profile: {
     name: 'Flex Restaurant', address: 'MG Road, Kochi', phone: '+91 98470 12345',
-    gstin: '32ABCDE1234F1Z5', fssai: '11523999000123', invoicePrefix: 'INV-',
+    fssai: '11523999000123', invoicePrefix: 'INV-',
     upiId: '', upiName: '', footerNote: '', tableNames: ['1', '2'],
   },
   billing: {
-    pricingMode: 'exclusive', serviceChargePct: 0, roundOff: false,
-    defaultGstRate: 5, kotEnabled: true, kotCounter: 0, thermalWidth: '80',
+    serviceChargePct: 0, roundOff: false,
+    kotEnabled: true, kotCounter: 0, thermalWidth: '80',
     rolloverTime: '00:00',
   },
   auth: { users: [], settingsPin: '1234' },
@@ -43,9 +43,9 @@ const state = (over = {}) => ({
   ...over,
 });
 
-const line = (price, qty, rate = 5) => ({
+const line = (price, qty) => ({
   id: 'l' + Math.random(), itemId: 'i', name: 'x', unitPrice: price, qty,
-  gstRate: rate, hsn: '9963', veg: true, note: '', kotPrinted: true,
+  veg: true, note: '', kotPrinted: true,
 });
 
 const noon = (y, m, d) => new Date(y, m - 1, d, 12, 0, 0).getTime();
@@ -55,7 +55,7 @@ const noon = (y, m, d) => new Date(y, m - 1, d, 12, 0, 0).getTime();
   const s = state({
     orders: [
       {
-        id: 'o1', invoiceNo: 'INV-0001', kotNos: [], gstEnabled: true, type: 'dine-in',
+        id: 'o1', invoiceNo: 'INV-0001', kotNos: [], type: 'dine-in',
         tableIndex: 0, customerName: '', customerPhone: '', customerAddress: '', orderNote: '',
         lines: [line(10000, 2)], // 200 excl 5% → 210 payable
         discount: 0, serviceCharge: 0, deliveryCharge: 0, status: 'paid',
@@ -64,7 +64,7 @@ const noon = (y, m, d) => new Date(y, m - 1, d, 12, 0, 0).getTime();
         staffName: 'M', closedBy: 'M', updatedAt: noon(2026, 9, 12),
       },
       {
-        id: 'o2', invoiceNo: 'INV-0002', kotNos: [], gstEnabled: true, type: 'delivery',
+        id: 'o2', invoiceNo: 'INV-0002', kotNos: [], type: 'delivery',
         tableIndex: null, customerName: 'Anu', customerPhone: '', customerAddress: '', orderNote: '',
         lines: [line(22000, 1)],
         discount: 0, serviceCharge: 0, deliveryCharge: 3000, status: 'paid',
@@ -76,12 +76,12 @@ const noon = (y, m, d) => new Date(y, m - 1, d, 12, 0, 0).getTime();
   });
   const z = buildZReport(s, new Date(2026, 8, 12, 20, 0));
   check('bills', z.bills, 2);
-  check('gross (210 + 231 + 30 dc)', z.gross, 21000 + 23100 + 3000);
-  check('cash', z.cash, 21000);
-  check('upi', z.upi, 26100);
+  check('gross (200 + 220 + 30 dc)', z.gross, 20000 + 22000 + 3000);
+  check('cash', z.cash, 20000);
+  check('upi', z.upi, 25000);
   check('card', z.card, 0);
   check('delivery total', z.deliveryCharges, 3000);
-  check('cash in drawer', z.cashInDrawer, 21000);
+  check('cash in drawer', z.cashInDrawer, 20000);
   check('no voids', z.voidCount, 0);
   check('bills list has both', z.paidBills.length, 2);
 }
@@ -91,7 +91,7 @@ const noon = (y, m, d) => new Date(y, m - 1, d, 12, 0, 0).getTime();
   const s = state({
     orders: [
       {
-        id: 'o1', invoiceNo: 'INV-0001', kotNos: [], gstEnabled: true, type: 'dine-in',
+        id: 'o1', invoiceNo: 'INV-0001', kotNos: [], type: 'dine-in',
         tableIndex: 0, customerName: '', customerPhone: '', customerAddress: '', orderNote: '',
         lines: [line(10000, 1)], discount: 0, serviceCharge: 0, deliveryCharge: 0,
         status: 'paid',
@@ -106,7 +106,7 @@ const noon = (y, m, d) => new Date(y, m - 1, d, 12, 0, 0).getTime();
   });
   const z = buildZReport(s, new Date(2026, 8, 12, 20, 0));
   check('expenses tracked', z.expenses, 2500);
-  check('drawer = cash − expenses', z.cashInDrawer, 10500 - 2500);
+  check('drawer = cash − expenses', z.cashInDrawer, 10000 - 2500);
 }
 
 // ── 3. Opening float ──────────────────────────────────────────────────────
@@ -121,14 +121,14 @@ const noon = (y, m, d) => new Date(y, m - 1, d, 12, 0, 0).getTime();
   const s = state({
     orders: [
       {
-        id: 'v1', invoiceNo: '', kotNos: [], gstEnabled: true, type: 'dine-in',
+        id: 'v1', invoiceNo: '', kotNos: [], type: 'dine-in',
         tableIndex: 3, customerName: '', customerPhone: '', customerAddress: '', orderNote: '',
         lines: [line(5000, 2)], discount: 0, serviceCharge: 0, deliveryCharge: 0,
         status: 'void', payments: [], createdAt: noon(2026, 9, 12), paidAt: null,
         voidReason: 'wrong order', staffName: 'W', closedBy: null, updatedAt: noon(2026, 9, 12),
       },
       {
-        id: 'v2', invoiceNo: 'INV-0009', kotNos: [], gstEnabled: true, type: 'takeaway',
+        id: 'v2', invoiceNo: 'INV-0009', kotNos: [], type: 'takeaway',
         tableIndex: null, customerName: '', customerPhone: '', customerAddress: '', orderNote: '',
         lines: [line(8000, 1)], discount: 0, serviceCharge: 0, deliveryCharge: 0,
         status: 'void', payments: [{ id: 'p', method: 'cash', amount: 8400, receivedAt: noon(2026, 9, 12) }],
@@ -139,8 +139,8 @@ const noon = (y, m, d) => new Date(y, m - 1, d, 12, 0, 0).getTime();
   });
   const z = buildZReport(s, new Date(2026, 8, 12, 20, 0));
   check('void count', z.voidCount, 2);
-  // Measured on the same basis as sales: the bill payable (incl. GST).
-  check('void total', z.voidTotal, 10500 + 8400);
+  // Measured on the same basis as sales: the bill payable.
+  check('void total', z.voidTotal, 10000 + 8000);
   check('voids not in sales', z.bills, 0);
   check('void reasons kept', z.voidedBills[0].reason, 'wrong order');
 }
@@ -156,7 +156,7 @@ const noon = (y, m, d) => new Date(y, m - 1, d, 12, 0, 0).getTime();
   });
   const z = buildZReport(s, new Date(2026, 8, 12, 20, 0));
   check('one day only: bills', z.bills, 1);
-  check('one day only: gross', z.gross, Math.round(7000 * 1.05));
+  check('one day only: gross', z.gross, 7000);
 }
 
 // ── 6. Rollover time: 00:30 keeps 00:15 in YESTERDAY's report ─────────────
@@ -174,7 +174,7 @@ const noon = (y, m, d) => new Date(y, m - 1, d, 12, 0, 0).getTime();
   const s = state({
     orders: [
       {
-        id: 'o1', invoiceNo: 'INV-0001', kotNos: [], gstEnabled: true, type: 'dine-in',
+        id: 'o1', invoiceNo: 'INV-0001', kotNos: [], type: 'dine-in',
         tableIndex: 0, customerName: '', customerPhone: '', customerAddress: '', orderNote: '',
         lines: [line(20000, 1)], discount: 0, serviceCharge: 0, deliveryCharge: 0,
         status: 'paid',
@@ -185,9 +185,9 @@ const noon = (y, m, d) => new Date(y, m - 1, d, 12, 0, 0).getTime();
     ],
   });
   const z = buildZReport(s, new Date(2026, 8, 12, 20, 0));
-  check('gross = payable only', z.gross, 21000);
-  check('cash = tender allocation, not over-tender', z.cash, 21000);
-  check('drawer matches cash', z.cashInDrawer, 21000);
+  check('gross = payable only', z.gross, 20000);
+  check('cash = tender allocation, not over-tender', z.cash, 20000);
+  check('drawer matches cash', z.cashInDrawer, 20000);
 }
 
 // ── 8. Plain-text output ──────────────────────────────────────────────────
@@ -214,11 +214,11 @@ const noon = (y, m, d) => new Date(y, m - 1, d, 12, 0, 0).getTime();
 
 function paidOrder(id, at, foodPaise) {
   return {
-    id, invoiceNo: 'INV-' + id, kotNos: [], gstEnabled: true, type: 'dine-in',
+    id, invoiceNo: 'INV-' + id, kotNos: [], type: 'dine-in',
     tableIndex: 0, customerName: '', customerPhone: '', customerAddress: '', orderNote: '',
     lines: [line(foodPaise, 1)], discount: 0, serviceCharge: 0, deliveryCharge: 0,
     status: 'paid',
-    payments: [{ id: 'p-' + id, method: 'cash', amount: Math.round(foodPaise * 1.05), receivedAt: at }],
+    payments: [{ id: 'p-' + id, method: 'cash', amount: foodPaise, receivedAt: at }],
     createdAt: at, paidAt: at, voidReason: '',
     staffName: 'M', closedBy: 'M', updatedAt: at,
   };

@@ -11,7 +11,6 @@
     "build": "tsc -b && vite build && node scripts/gen-sw.mjs",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test:gst": "esbuild scripts/gst-test.mjs --bundle --format=esm --platform=node --outfile=node_modules/.cache/gst-test.mjs --log-level=error && node node_modules/.cache/gst-test.mjs",
     "test:receipt": "esbuild scripts/receipt-test.mjs --bundle --format=esm --platform=node --outfile=node_modules/.cache/receipt-test.mjs --log-level=error && node node_modules/.cache/receipt-test.mjs",
     "test:sync": "esbuild scripts/sync-test.mjs --bundle --format=esm --platform=node --outfile=node_modules/.cache/sync-test.mjs --log-level=error && node node_modules/.cache/sync-test.mjs",
     "test:offline": "node scripts/offline-test.mjs",

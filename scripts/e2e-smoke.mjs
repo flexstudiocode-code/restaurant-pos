@@ -402,14 +402,13 @@ try {
   );
   await waitFor(cdp, `window.__e2e.rowValue('Delivery charge') === '₹30'`, 'the delivery charge to land on the bill');
 
-  // Food is taxed at the seeded 5% (exclusive pricing), then rounded to the rupee.
+  // Food total, then rounded to the rupee.
   const food = (tea + coffee) * 100;
-  const gst = Math.round((food * 5) / 100);
-  const payablePaise = Math.round((food + gst + 3000) / 100) * 100;
+  const payablePaise = Math.round((food + 3000) / 100) * 100;
   const payable = `₹${payablePaise / 100}`;
 
   check(
-    'bill total = food + GST + delivery charge, rounded',
+    'bill total = food + delivery charge, rounded',
     (await body(`window.__e2e.rowValue('Total')`)) === payable,
     `wanted ${payable}`
   );
@@ -425,7 +424,7 @@ try {
   await waitFor(cdp, `window.__e2e.has('Payment complete')`, 'the receipt screen');
 
   const receipt = await body(`window.__e2e.text()`);
-  check('receipt is issued as a tax invoice', receipt.includes('TAX INVOICE'));
+  check('receipt is issued as an invoice', receipt.includes('INVOICE'));
   check(
     'receipt shows the delivery charge',
     /delivery charge/i.test(receipt) && receipt.includes('+ 30.00'),
