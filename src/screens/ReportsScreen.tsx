@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../store';
 import { isDesktop } from '../desktop';
 import { isEditableTarget } from '../shortcuts';
-import { buildBill } from '../gst';
+import { buildBill } from '../bill';
 import { fmt } from '../money';
 import { fmtDay, todayKey } from '../format';
 import { DEFAULT_BILL_LAYOUT, thermalWidthMm } from '../types';
@@ -64,9 +64,6 @@ export function ReportsScreen() {
       (o) => o.status === 'paid' && o.paidAt !== null && o.paidAt >= start.getTime() && o.paidAt <= end.getTime()
     );
     let sales = 0;
-    let tax = 0;
-    let cgst = 0;
-    let sgst = 0;
     let discounts = 0;
     let deliveryCharges = 0;
     let serviceCharges = 0;
@@ -96,13 +93,9 @@ export function ReportsScreen() {
         lines: o.lines,
         discount: o.discount,
         billing: state.billing,
-        gstEnabled: o.gstEnabled,
         deliveryCharge: o.deliveryCharge,
       });
       sales += bill.payable;
-      tax += bill.taxTotal;
-      cgst += bill.cgstTotal;
-      sgst += bill.sgstTotal;
       discounts += bill.discount;
       deliveryCharges += bill.deliveryCharge;
       serviceCharges += bill.serviceCharge;
@@ -140,7 +133,7 @@ export function ReportsScreen() {
       count: paidOrders.length,
       sales,
       avg: paidOrders.length ? sales / paidOrders.length : 0,
-      tax, cgst, sgst, discounts, deliveryCharges, serviceCharges, itemsSold,
+      discounts, deliveryCharges, serviceCharges, itemsSold,
       payMix, topItems, topCats,
       settlement,
       expenses, expenseList, profit: sales - expenses,
@@ -158,7 +151,7 @@ export function ReportsScreen() {
 
   const exportCsv = () => {
     const rows: string[][] = [
-      ['Invoice', 'Date', 'Type', 'Table/Customer', 'Items', 'Subtotal', 'Discount', 'Delivery charge', 'CGST', 'SGST', 'Service charge', 'Total', 'Paid via'],
+      ['Invoice', 'Date', 'Type', 'Table/Customer', 'Items', 'Subtotal', 'Discount', 'Delivery charge', 'Service charge', 'Total', 'Paid via'],
     ];
     for (const o of state.orders) {
       if (o.status !== 'paid' || o.paidAt === null) continue;
@@ -167,7 +160,6 @@ export function ReportsScreen() {
         lines: o.lines,
         discount: o.discount,
         billing: state.billing,
-        gstEnabled: o.gstEnabled,
         deliveryCharge: o.deliveryCharge,
       });
       const table = o.type === 'dine-in' && o.tableIndex !== null ? `Table ${state.profile.tableNames[o.tableIndex]}` : o.type === 'takeaway' ? 'Takeaway' : o.customerName || 'Delivery';
@@ -178,11 +170,9 @@ export function ReportsScreen() {
         o.type,
         table,
         String(o.lines.reduce((s, l) => s + l.qty, 0)),
-        (bill.foodTaxable / 100).toFixed(2),
+        (bill.foodGross / 100).toFixed(2),
         (bill.discount / 100).toFixed(2),
         (bill.deliveryCharge / 100).toFixed(2),
-        (bill.cgstTotal / 100).toFixed(2),
-        (bill.sgstTotal / 100).toFixed(2),
         (bill.serviceCharge / 100).toFixed(2),
         (bill.payable / 100).toFixed(2),
         methods,
@@ -296,16 +286,7 @@ export function ReportsScreen() {
           </div>
 
           <div className="panel">
-            <div className="list-row"><div className="list-title">Tax collected</div></div>
-            <div className="list-row">
-              <div className="grow">CGST</div><div className="bold mono">{fmt(report.cgst)}</div>
-            </div>
-            <div className="list-row">
-              <div className="grow">SGST</div><div className="bold mono">{fmt(report.sgst)}</div>
-            </div>
-            <div className="list-row">
-              <div className="grow">Total GST</div><div className="bold mono">{fmt(report.tax)}</div>
-            </div>
+            <div className="list-row"><div className="list-title">Adjustments</div></div>
             {report.discounts > 0 && (
               <div className="list-row">
                 <div className="grow">Discounts given</div><div className="bold mono">−{fmt(report.discounts)}</div>
@@ -548,7 +529,6 @@ function ZReportBody({ z }: { z: ReturnType<typeof buildZReport> }) {
       {z.discounts > 0 && <Row k="Discounts" v={'-' + money(z.discounts)} />}
       {z.deliveryCharges > 0 && <Row k="Delivery charges" v={'+' + money(z.deliveryCharges)} />}
       {z.serviceCharges > 0 && <Row k="Service charge" v={'+' + money(z.serviceCharges)} />}
-      {z.taxTotal > 0 && <Row k="CGST + SGST" v={money(z.taxTotal)} />}
       {z.roundOff !== 0 && <Row k="Round off" v={money(z.roundOff)} />}
       <div className="r-sep" />
       <div className="r-line small"><span className="l">CASH</span><span className="r" /></div>

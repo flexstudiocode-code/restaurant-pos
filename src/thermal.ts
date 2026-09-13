@@ -102,7 +102,7 @@ export interface RasterOptions {
    *  (e.g. “RESTAURANT”) — mirrors the on-screen two-line bill header. */
   subLines?: number;
   /** Body-font lines right after the subtitle that are centred (address,
-   *  phone, GSTIN, custom header lines, TAX INVOICE) — mirrors the centred
+   *  phone, custom header lines, INVOICE) — mirrors the centred
    *  on-screen header block under the restaurant name. */
   centerLines?: number;
   /** Supersampling factor — text is drawn at this multiple of the dot
@@ -165,7 +165,7 @@ export async function renderTextToRaster(
   const lines = text.split('\n');
   const header = lines.slice(0, scriptLines).map((l) => l.trim()).filter(Boolean);
   const subHeader = lines.slice(scriptLines, scriptLines + subLines).map((l) => l.trim()).filter(Boolean);
-  // Header detail block (address, GSTIN, …) is centred in the body font.
+  // Header detail block (address, …) is centred in the body font.
   const centeredHeader = lines
     .slice(scriptLines + subLines, scriptLines + subLines + centerLines)
     .map((l) => l.trim())

@@ -1,10 +1,10 @@
 import { useRef, useState, type ChangeEvent } from 'react';
 import { useStore } from '../store';
-import type { PricingMode, Role, StaffUser } from '../types';
-import { GST_RATES, thermalWidthMm, uid } from '../types';
+import type { Role, StaffUser } from '../types';
+import { thermalWidthMm, uid } from '../types';
 import { fileToPhotoDataUrl } from '../photo';
 import { fmt } from '../money';
-import { buildBill } from '../gst';
+import { buildBill } from '../bill';
 import { businessDayKey } from '../rollover';
 import { Switch, Modal, Chips } from '../components/ui';
 import { IconTrash } from '../components/icons';
@@ -117,12 +117,12 @@ function ProfileSection() {
   const p = state.profile;
   const [form, setForm] = useState({
     name: p.name, address: p.address, phone: p.phone,
-    gstin: p.gstin, fssai: p.fssai, invoicePrefix: p.invoicePrefix,
+    fssai: p.fssai, invoicePrefix: p.invoicePrefix,
     upiId: p.upiId, upiName: p.upiName, footerNote: p.footerNote, logo: p.logo ?? '',
   });
   const [logoBusy, setLogoBusy] = useState(false);
   const logoRef = useRef<HTMLInputElement>(null);
-  const dirty = JSON.stringify(form) !== JSON.stringify({ name: p.name, address: p.address, phone: p.phone, gstin: p.gstin, fssai: p.fssai, invoicePrefix: p.invoicePrefix, upiId: p.upiId, upiName: p.upiName, footerNote: p.footerNote, logo: p.logo ?? '' });
+  const dirty = JSON.stringify(form) !== JSON.stringify({ name: p.name, address: p.address, phone: p.phone, fssai: p.fssai, invoicePrefix: p.invoicePrefix, upiId: p.upiId, upiName: p.upiName, footerNote: p.footerNote, logo: p.logo ?? '' });
   const set = (k: keyof typeof form) => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -182,10 +182,9 @@ function ProfileSection() {
       <div className="field"><label>Address (shown on bill)</label><input className="input" value={form.address} onChange={set('address')} /></div>
       <div className="row" style={{ gap: 8 }}>
         <div className="field grow"><label>Phone</label><input className="input" value={form.phone} onChange={set('phone')} /></div>
-        <div className="field grow"><label>GSTIN</label><input className="input" value={form.gstin} onChange={set('gstin')} placeholder="32XXXXX…" /></div>
+        <div className="field grow"><label>FSSAI license no.</label><input className="input" value={form.fssai} onChange={set('fssai')} /></div>
       </div>
       <div className="row" style={{ gap: 8 }}>
-        <div className="field grow"><label>FSSAI license no.</label><input className="input" value={form.fssai} onChange={set('fssai')} /></div>
         <div className="field" style={{ width: 130 }}><label>Invoice prefix</label><input className="input" value={form.invoicePrefix} onChange={set('invoicePrefix')} /></div>
       </div>
       <div className="row" style={{ gap: 8 }}>
@@ -307,42 +306,19 @@ function BillingSection() {
   const { state, updateBilling, notify } = useStore();
   const b = state.billing;
   const [scPct, setScPct] = useState(String(b.serviceChargePct));
-  const [pricingMode, setPricingMode] = useState<PricingMode>(b.pricingMode);
-  const [defaultGst, setDefaultGst] = useState(b.defaultGstRate);
   const [roundOff, setRoundOff] = useState(b.roundOff);
   const [kotEnabled, setKotEnabled] = useState(b.kotEnabled);
-  const dirty = scPct !== String(b.serviceChargePct) || pricingMode !== b.pricingMode || defaultGst !== b.defaultGstRate || roundOff !== b.roundOff || kotEnabled !== b.kotEnabled;
+  const dirty = scPct !== String(b.serviceChargePct) || roundOff !== b.roundOff || kotEnabled !== b.kotEnabled;
 
   const scPctNum = Number(scPct);
 
   return (
     <div className="card" style={{ margin: '0 14px 12px' }}>
-      <div className="section-title" style={{ marginTop: 0 }}>Billing & GST</div>
-      <div className="field">
-        <label>Menu price includes GST?</label>
-        <div className="seg">
-          <button className={pricingMode === 'inclusive' ? 'active' : ''} onClick={() => setPricingMode('inclusive')}>
-            Inclusive
-          </button>
-          <button className={pricingMode === 'exclusive' ? 'active' : ''} onClick={() => setPricingMode('exclusive')}>
-            Exclusive
-          </button>
-        </div>
-        <div className="small muted" style={{ marginTop: 5 }}>
-          Exclusive (default) = GST is added on top of the menu price, so the bill total includes
-          CGST + SGST. Inclusive = the menu price is what the customer pays; GST is shown separately.
-        </div>
-      </div>
+      <div className="section-title" style={{ marginTop: 0 }}>Billing</div>
       <div className="row" style={{ gap: 8 }}>
         <div className="field grow">
           <label>Service charge % (0 = off)</label>
           <input className="input" type="number" min="0" max="50" value={scPct} onChange={(e) => setScPct(e.target.value)} />
-        </div>
-        <div className="field" style={{ width: 140 }}>
-          <label>Default GST slab</label>
-          <select className="select" value={defaultGst} onChange={(e) => setDefaultGst(Number(e.target.value))}>
-            {GST_RATES.map((r) => <option key={r} value={r}>{r}%</option>)}
-          </select>
         </div>
       </div>
       <Switch on={roundOff} onChange={setRoundOff} label="Round off to nearest rupee" sub="0.50 rounds up — standard practice" />
@@ -352,8 +328,6 @@ function BillingSection() {
         onSave={() => {
           updateBilling({
             serviceChargePct: Number.isFinite(scPctNum) && scPctNum >= 0 ? Math.min(50, scPctNum) : 0,
-            pricingMode,
-            defaultGstRate: defaultGst,
             roundOff,
             kotEnabled,
           });
@@ -552,7 +526,6 @@ function DaySection() {
       lines: o.lines,
       discount: o.discount,
       billing: state.billing,
-      gstEnabled: o.gstEnabled,
       deliveryCharge: o.deliveryCharge,
     });
     return s + bill.payable;

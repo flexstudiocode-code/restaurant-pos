@@ -565,7 +565,7 @@ input, select, textarea { font-family: inherit; font-size: 15px; }
   white-space: nowrap;
 }
 .item-card .sizes-btn:disabled { background: var(--border); color: var(--muted); }
-/* Cards whose item has sizes: keep price/GST text clear of the wider pill. */
+/* Cards whose item has sizes: keep price text clear of the wider pill. */
 .item-card.has-variants .i-price,
 .item-card.has-variants .i-meta { padding-right: 100px; }
 .qty-pill {

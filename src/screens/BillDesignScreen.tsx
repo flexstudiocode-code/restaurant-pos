@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useStore } from '../store';
 import { DEFAULT_BILL_LAYOUT, type BillLayout, type Order, type OrderLine, type State } from '../types';
-import { buildBill } from '../gst';
+import { buildBill } from '../bill';
 import { invoiceLabel } from '../format';
 import { billFontSizePct, billFontStyle } from '../billLayout';
 import { ReceiptBody } from './ReceiptScreen';
@@ -9,7 +9,7 @@ import { Chips, Switch } from '../components/ui';
 import { IconBack } from '../components/icons';
 
 const PLACEHOLDER_HINT =
-  'Available: {name} {address} {phone} {gstin} {fssai} {invoice} {date} {time} {cashier} {covers} {table} {type}';
+  'Available: {name} {address} {phone} {fssai} {invoice} {date} {time} {cashier} {covers} {table} {type}';
 
 /** An order to preview with: the latest paid bill, or a demo built from the
  *  current menu when there is no paid bill yet. */
@@ -25,8 +25,6 @@ function previewOrder(state: State): Order {
     name: i.name,
     unitPrice: i.price,
     qty: 1,
-    gstRate: i.gstRate,
-    hsn: i.hsn,
     veg: i.veg,
     note: '',
     kotPrinted: false,
@@ -36,7 +34,6 @@ function previewOrder(state: State): Order {
     id: 'demo',
     invoiceNo: state.invoiceCounter > 0 ? invoiceLabel(state.profile.invoicePrefix, state.invoiceCounter) : 'INV-0001',
     kotNos: [],
-    gstEnabled: true,
     type: 'dine-in',
     tableIndex: 0,
     customerName: '',
@@ -81,11 +78,10 @@ function TextLinesEditor({
 
 const SECTION_TOGGLES: { key: keyof BillLayout; label: string; sub: string }[] = [
   { key: 'showRestaurantName', label: 'Restaurant name header', sub: 'MEADOWS PARK in script with RESTAURANT below' },
-  { key: 'showTaxInvoiceLabel', label: '“TAX INVOICE” label', sub: 'Show the invoice type line under the header' },
+  { key: 'showInvoiceLabel', label: '“INVOICE” label', sub: 'Show the invoice type line under the header' },
   { key: 'showColumnHeaders', label: 'Dish / Qty / Amnt column headers', sub: 'The header row above the items' },
   { key: 'showMarkers', label: 'Veg (*) / non-veg (#) markers', sub: 'Item marker next to the quantity' },
   { key: 'showInvoiceDetails', label: 'Invoice, date & customer details', sub: 'Invoice No, Date, Type and customer block' },
-  { key: 'showTaxSummary', label: 'GST summary lines', sub: 'Per-slab CGST + SGST breakdown' },
   { key: 'showPayments', label: 'Payments & change', sub: 'Cash / UPI / card amounts and change' },
   { key: 'showFooter', label: 'Footer (thanks) lines', sub: 'The closing message at the bottom' },
 ];
@@ -104,7 +100,6 @@ export function BillDesignScreen() {
     lines: order.lines,
     discount: order.discount,
     billing: state.billing,
-    gstEnabled: order.gstEnabled,
     deliveryCharge: order.deliveryCharge,
   });
   const change = Math.max(0, order.payments.reduce((s, p) => s + p.amount, 0) - bill.payable);

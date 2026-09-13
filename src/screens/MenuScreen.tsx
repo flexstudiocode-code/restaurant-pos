@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useStore } from '../store';
 import type { Category, MenuItem } from '../types';
-import { GST_RATES, DEFAULT_HSN, uid } from '../types';
+import { uid } from '../types';
 import { fmt, rupeesToPaise, fmtQty } from '../money';
 import { Modal, EmptyState, Switch, Chips } from '../components/ui';
 import { IconPlus, IconEdit, IconTrash } from '../components/icons';
@@ -90,7 +90,7 @@ export function MenuScreen() {
                 )}
               </div>
               <div className="list-sub">
-                {fmt(it.price)} · {it.gstRate}% GST · HSN {it.hsn}
+                {fmt(it.price)}
                 {it.stock !== null && ` · Stock ${fmtQty(it.stock)}`}
               </div>
             </div>
@@ -210,9 +210,7 @@ function ItemForm({
   const [name, setName] = useState(initial?.name ?? '');
   const [price, setPrice] = useState(initial ? (initial.price / 100).toFixed(2) : '');
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? defaultCatId);
-  const [gstRate, setGstRate] = useState<number>(initial?.gstRate ?? 5);
   const [veg, setVeg] = useState(initial?.veg ?? true);
-  const [hsn, setHsn] = useState(initial?.hsn ?? DEFAULT_HSN);
   const [stock, setStock] = useState(initial?.stock !== null && initial !== null ? String(initial.stock) : '');
   const [photo, setPhoto] = useState(initial?.photo ?? '');
   const [photoBusy, setPhotoBusy] = useState(false);
@@ -352,20 +350,6 @@ function ItemForm({
           + Add size
         </button>
       </div>
-      <div className="row" style={{ gap: 8 }}>
-        <div className="field" style={{ width: 110 }}>
-          <label>GST slab</label>
-          <select className="select" value={gstRate} onChange={(e) => setGstRate(Number(e.target.value))}>
-            {GST_RATES.map((r) => (
-              <option key={r} value={r}>{r}%</option>
-            ))}
-          </select>
-        </div>
-        <div className="field grow">
-          <label>HSN code</label>
-          <input className="input" value={hsn} onChange={(e) => setHsn(e.target.value)} />
-        </div>
-      </div>
       <div className="field">
         <label>Stock (leave empty for unlimited)</label>
         <input className="input" type="number" min="0" value={stock} onChange={(e) => setStock(e.target.value)} />
@@ -381,8 +365,6 @@ function ItemForm({
             categoryId,
             name: name.trim(),
             price: pricePaise!,
-            gstRate,
-            hsn: hsn.trim() || DEFAULT_HSN,
             veg,
             available: initial?.available ?? true,
             stock: stock.trim() === '' ? null : Math.max(0, Math.floor(Number(stock) || 0)),
